@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音乐工具箱 (Music Toolkit) - 格式修复与声学指纹去重</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- 顶部导航栏 -->
+        <header class="app-header glass-panel">
+            <div class="brand">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18V5l12-2v13"></path>
+                        <circle cx="6" cy="18" r="3"></circle>
+                        <circle cx="18" cy="16" r="3"></circle>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>Music Toolkit</h1>
+                    <span class="version-tag">v2.0 (Format + Songloft Dedup)</span>
+                </div>
+            </div>
+
+            <!-- 系统状态标签 -->
+            <div class="system-status-chips">
+                <div class="chip" id="chip-ffmpeg" title="FFmpeg 状态">
+                    <span class="dot"></span>
+                    <span class="label">FFmpeg</span>
+                </div>
+                <div class="chip" id="chip-chromaprint" title="Chromaprint AcoustID 音频指纹支持">
+                    <span class="dot"></span>
+                    <span class="label">Chromaprint</span>
+                </div>
+                <div class="chip" id="chip-music-dir" title="音乐库挂载状态">
+                    <span class="dot"></span>
+                    <span class="label" id="music-dir-label">未挂载</span>
+                </div>
+                <div class="chip" id="chip-local-user" title="本地管理员登录状态">
+                    <span class="dot"></span>
+                    <span class="label" id="local-user-label">本地: 未登录</span>
+                </div>
+                <div class="chip" id="chip-feiniu" title="飞牛 NAS 音乐连接状态">
+                    <span class="dot"></span>
+                    <span class="label" id="feiniu-chip-label">飞牛NAS</span>
+                </div>
+            </div>
+
+            <div class="header-right-tools">
+                <!-- 导航标签 -->
+                <nav class="nav-tabs">
+                    <button class="nav-tab active" data-tab="tab-format">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <span>格式检查</span>
+                        <span class="tab-lock-icon" title="系统未解锁" style="display: none;">🔒</span>
+                    </button>
+                    <button class="nav-tab" data-tab="tab-dedup">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        <span>音频去重</span>
+                        <span class="badge-accent">Songloft 引擎</span>
+                        <span class="tab-lock-icon" title="系统未解锁" style="display: none;">🔒</span>
+                    </button>
+                    <button class="nav-tab" data-tab="tab-lossless">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        <span>真假无损</span>
+                        <span class="badge-accent">FLAC/APE</span>
+                        <span class="tab-lock-icon" title="系统未解锁" style="display: none;">🔒</span>
+                    </button>
+                    <button class="nav-tab" data-tab="tab-playlist">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle><line x1="3" y1="6" x2="6" y2="6"></line><line x1="3" y1="10" x2="6" y2="10"></line></svg>
+                        <span>歌单获取</span>
+                        <span class="badge-accent">网易/QQ/汽水</span>
+                        <span class="tab-lock-icon" title="系统未解锁" style="display: none;">🔒</span>
+                    </button>
+                    <button class="nav-tab" data-tab="tab-feiniu">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                        <span>飞牛音乐</span>
+                        <span class="badge-accent">FnOS NAS</span>
+                    </button>
+                </nav>
+
+                <!-- 本地账号登出按钮 (已登录时显示) -->
+                <button id="btn-logout-local" class="btn-header-action" title="退出本地管理员账号" style="display: none;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    <span>退出本地</span>
+                </button>
+
+                <!-- 明暗主题切换 -->
+                <button id="btn-toggle-theme" class="btn-theme-toggle" title="切换明暗主题">☀️</button>
+            </div>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main class="app-main">
+            <!-- 全局系统解锁认证门户 (系统未解锁时展示) -->
+            <section id="system-auth-portal" class="auth-portal-wrapper" style="display: none;">
+                <div class="auth-portal-container glass-panel">
+                    <div class="auth-portal-header">
+                        <div class="auth-icon-badge">🔐</div>
+                        <h2>系统访问与权限解锁</h2>
+                        <p class="subtitle">系统支持两种解锁方式：使用本地管理员账号登录（非飞牛 NAS 环境推荐），或连接飞牛 NAS 音乐原生服务。满足任意一种即可解锁使用全部音频工具。</p>
+                    </div>
+
+                    <!-- 认证模式切换 -->
+                    <div class="auth-tabs-switch">
+                        <button type="button" class="auth-tab-btn active" data-target="panel-auth-local">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span>系统本地账号</span>
+                        </button>
+                        <button type="button" class="auth-tab-btn" data-target="panel-auth-feiniu">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                            <span>飞牛 NAS 音乐直连</span>
+                        </button>
+                    </div>
+
+                    <!-- 选项卡 1: 本地账号 (首次设置 或 正常登录) -->
+                    <div id="panel-auth-local" class="auth-panel-content active">
+                        <!-- 首次初始化表单 -->
+                        <div id="auth-box-init" style="display: none;">
+                            <div class="auth-banner init-banner">
+                                <span class="badge-tag">首次使用初始化</span>
+                                <h4>🎉 创建系统管理员账号</h4>
+                                <p>检测到系统尚未创建管理员账号，请设定初始管理员用户名和密码。创建成功将自动登录并全量解锁系统功能。</p>
+                            </div>
+                            <form id="form-auth-init" class="config-form" style="margin-top: 16px;">
+                                <div class="form-group">
+                                    <label for="auth-init-username">管理员用户名</label>
+                                    <input type="text" id="auth-init-username" class="input-text" value="admin" placeholder="输入用户名，例如 admin" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="auth-init-password">设置密码</label>
+                                    <input type="password" id="auth-init-password" class="input-text" placeholder="输入密码 (至少 4 位)" required minlength="4">
+                                </div>
+                                <div class="form-group">
+                                    <label for="auth-init-password-confirm">确认密码</label>
+                                    <input type="password" id="auth-init-password-confirm" class="input-text" placeholder="再次输入密码" required minlength="4">
+                                </div>
+                                <button type="submit" id="btn-auth-init-submit" class="btn btn-primary btn-block">
+                                    🚀 创建管理员并解锁系统
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- 正常登录表单 -->
+                        <div id="auth-box-login">
+                            <div class="auth-banner login-banner">
+                                <span class="badge-tag">本地密码登录</span>
+                                <h4>👤 系统管理员登录</h4>
+                                <p>请输入之前创建的管理员用户名和密码，登录成功即可解锁系统全套工具。</p>
+                            </div>
+                            <form id="form-auth-login" class="config-form" style="margin-top: 16px;">
+                                <div class="form-group">
+                                    <label for="auth-login-username">用户名</label>
+                                    <input type="text" id="auth-login-username" class="input-text" placeholder="请输入用户名" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="auth-login-password">登录密码</label>
+                                    <input type="password" id="auth-login-password" class="input-text" placeholder="请输入密码" required>
+                                </div>
+                                <button type="submit" id="btn-auth-login-submit" class="btn btn-primary btn-block">
+                                    🔓 登录并解锁系统
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 选项卡 2: 飞牛 NAS 音乐直连 -->
+                    <div id="panel-auth-feiniu" class="auth-panel-content">
+                        <div class="auth-banner feiniu-banner">
+                            <span class="badge-tag">FnOS NAS 原生集成</span>
+                            <h4>⚡ 飞牛 NAS 音乐服务直连</h4>
+                            <p>适用于部署在飞牛 NAS 或局域网内拥有飞牛 NAS 的用户。连接飞牛 NAS 音乐原生服务后将自动解锁系统全部工具及飞牛歌单管理。</p>
+                        </div>
+                        <form id="form-portal-feiniu-connect" class="config-form" style="margin-top: 16px;">
+                            <div class="form-group">
+                                <label for="portal-fn-server-url">飞牛 NAS 服务地址</label>
+                                <input type="text" id="portal-fn-server-url" class="input-text" value="http://172.17.0.1:5666" placeholder="例如：http://172.17.0.1:5666" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="portal-fn-username">飞牛用户名</label>
+                                <input type="text" id="portal-fn-username" class="input-text" placeholder="例如：admin" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="portal-fn-password">登录密码</label>
+                                <input type="password" id="portal-fn-password" class="input-text" placeholder="飞牛系统登录密码" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="portal-fn-access-code">安全码 (可选)</label>
+                                <input type="password" id="portal-fn-access-code" class="input-text" placeholder="若 NAS 开启了安全码保护请输入">
+                            </div>
+                            <button type="submit" id="btn-portal-fn-connect" class="btn btn-success btn-block">
+                                ⚡ 连接飞牛并解锁系统
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- 解锁功能特性一览 -->
+                    <div class="auth-features-preview">
+                        <div class="feature-item">
+                            <span class="feature-icon">🔍</span>
+                            <div>
+                                <h5>格式一致性检查</h5>
+                                <p>Magic Bytes 真实特征识别</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🎵</span>
+                            <div>
+                                <h5>Songloft 音频去重</h5>
+                                <p>声学指纹聚类高精度比对</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">💎</span>
+                            <div>
+                                <h5>真假无损辨别</h5>
+                                <p>高频频谱衰减与伪无损识别</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">📋</span>
+                            <div>
+                                <h5>多平台歌单同步</h5>
+                                <p>网易/QQ/汽水音乐解析导出</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 1: 格式一致性检查器 -->
+            <section id="tab-format" class="tab-content active">
+                <div class="grid-layout">
+                    <!-- 折叠后展开按钮 -->
+                    <button type="button" class="sidebar-expand-trigger" title="展开控制栏">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                            <path d="M12 21L18 15H6z"/>
+                            <rect x="5" y="10.7" width="14" height="1.8" rx="0.9"/>
+                            <rect x="5" y="7.2" width="14" height="1.8" rx="0.9"/>
+                            <rect x="5" y="3.7" width="14" height="1.8" rx="0.9"/>
+                        </svg>
+                        <span>展开面板</span>
+                    </button>
+
+                    <!-- 控制侧边栏 -->
+                    <div class="control-panel glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-wrap">
+                                <h2>格式一致性检测</h2>
+                                <p class="subtitle">全面检测真实音频格式与后缀不一致、下载损坏或防盗链网页伪装文件</p>
+                            </div>
+                            <button type="button" class="btn-sidebar-toggle" title="折叠控制栏">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    <path d="M12 3L6 9h12z"/>
+                                    <rect x="5" y="11.5" width="14" height="1.8" rx="0.9"/>
+                                    <rect x="5" y="15" width="14" height="1.8" rx="0.9"/>
+                                    <rect x="5" y="18.5" width="14" height="1.8" rx="0.9"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form id="form-format-scan" class="config-form">
+                            <div class="form-group">
+                                <div class="form-label-row">
+                                    <label for="fmt-music-dir">待扫描音乐目录</label>
+                                    <span class="label-badge-tip">支持多目录与单目录</span>
+                                </div>
+                                <select id="fmt-dir-select" class="select-input dir-quick-select" title="快速选择已挂载的音乐库">
+                                    <option value="__ALL__">🌐 全部音乐库 (合并扫描)</option>
+                                    <option value="__CUSTOM__">✏️ 自定义路径 / 手动输入...</option>
+                                </select>
+                                <div class="input-with-action" style="margin-top: 6px;">
+                                    <input type="text" id="fmt-music-dir" class="input-text" placeholder="例如：/music 或 /vol1/1000/music">
+                                    <button type="button" class="btn-input-refresh" id="btn-refresh-fmt-dir" title="重新查询该目录音乐数量">🔄</button>
+                                </div>
+                                <div class="dir-stats-badge" id="fmt-dir-stats">
+                                    <span class="stats-loading">🔍 正在查询目录音频文件...</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="fmt-workers">并发扫描线程数: <span id="fmt-workers-val">4</span></label>
+                                <input type="range" id="fmt-workers" min="1" max="16" value="4" class="slider-input">
+                            </div>
+
+                            <button type="submit" id="btn-start-format" class="btn btn-primary btn-glow">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+                                <span>开始扫描检测</span>
+                            </button>
+                        </form>
+
+                        <div class="divider"></div>
+
+                        <div class="smart-clean-box" style="background: rgba(124, 58, 237, 0.06); border-color: rgba(124, 58, 237, 0.2);">
+                            <h3 style="color: var(--accent-primary);">💡 检测后处置流程</h3>
+                            <p>扫描仅探测真实音频流，不修改原始文件。扫描完成后，您可以在右侧结果列表中按需对异常音频执行：</p>
+                            <ul style="font-size: 11px; color: var(--text-muted); padding-left: 16px; line-height: 1.7;">
+                                <li><strong>✏️ 修改（修正后缀）</strong>：原地将后缀更正为探测到的真实格式。</li>
+                                <li><strong>📋 复制</strong>：将异常音频复制到输出目录进行归档或备份。</li>
+                                <li><strong>📦 移动</strong>：将异常音频移动隔离到指定输出目录。</li>
+                                <li><strong>🗑️ 删除/回收</strong>：安全移入回收站或彻底永久删除。</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 结果展示区 -->
+                    <div class="display-panel">
+                        <!-- 统计概览卡片 -->
+                        <div class="stats-grid">
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-total">🎵</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">扫描文件总数</span>
+                                    <span class="stat-value" id="stat-fmt-total">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-ok">✅</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">格式完全匹配</span>
+                                    <span class="stat-value" id="stat-fmt-ok">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel highlight-warn">
+                                <div class="stat-icon icon-warn">⚠️</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">后缀不一致</span>
+                                    <span class="stat-value" id="stat-fmt-mismatch">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel highlight-danger">
+                                <div class="stat-icon icon-error">🚫</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">损坏或虚假网页</span>
+                                    <span class="stat-value" id="stat-fmt-fake">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 进度指示条 -->
+                        <div id="format-progress-container" class="progress-panel glass-panel hidden">
+                            <div class="progress-header">
+                                <span class="progress-title" id="fmt-progress-text">正在扫描音频文件...</span>
+                                <span class="progress-percent" id="fmt-progress-percent">0%</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="fmt-progress-bar"></div>
+                            </div>
+                            <div class="progress-sub" id="fmt-current-file">准备中...</div>
+                        </div>
+
+                        <!-- 异常文件列表 -->
+                        <div class="table-panel glass-panel">
+                            <div class="table-header">
+                                <div>
+                                    <h3>异常文件列表</h3>
+                                    <span class="table-subtitle" id="fmt-record-count">共发现 0 项异常</span>
+                                </div>
+                                <div class="table-actions">
+                                    <input type="text" id="fmt-filter-query" class="input-search" placeholder="搜索文件名或格式...">
+                                    <button id="btn-export-csv" class="btn btn-secondary btn-sm" title="导出检测结果为 CSV">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                        导出 CSV
+                                    </button>
+                                    <div class="btn-group-actions">
+                                        <button id="btn-batch-fix-rename" class="btn btn-success btn-sm" title="将选中文件原地修正后缀">
+                                            ✏️ 批量修正
+                                        </button>
+                                        <button id="btn-batch-copy" class="btn btn-secondary btn-sm" title="将选中文件复制到输出目录">
+                                            📋 批量复制
+                                        </button>
+                                        <button id="btn-batch-move" class="btn btn-secondary btn-sm" title="将选中文件移动到输出目录">
+                                            📦 批量移动
+                                        </button>
+                                        <button id="btn-batch-delete" class="btn btn-danger-outline btn-sm" title="清理选中的异常音频">
+                                            🗑️ 批量清理
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-container">
+                                <table class="data-table" id="table-format-records">
+                                    <thead>
+                                        <tr>
+                                            <th width="40"><input type="checkbox" id="fmt-check-all"></th>
+                                            <th>音频文件</th>
+                                            <th>当前后缀</th>
+                                            <th>真实探测格式</th>
+                                            <th>建议后缀</th>
+                                            <th>探测详情</th>
+                                            <th>状态</th>
+                                            <th width="200">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fmt-records-body">
+                                        <tr>
+                                            <td colspan="8" class="empty-state">
+                                                <div class="empty-icon">📂</div>
+                                                <p>点击左侧“开始扫描检测”按钮进行分析</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: 音频指纹去重器 (Songloft 引擎) -->
+            <section id="tab-dedup" class="tab-content">
+                <div class="grid-layout">
+                    <!-- 折叠后展开按钮 -->
+                    <button type="button" class="sidebar-expand-trigger" title="展开控制栏">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                            <path d="M12 21L18 15H6z"/>
+                            <rect x="5" y="10.7" width="14" height="1.8" rx="0.9"/>
+                            <rect x="5" y="7.2" width="14" height="1.8" rx="0.9"/>
+                            <rect x="5" y="3.7" width="14" height="1.8" rx="0.9"/>
+                        </svg>
+                        <span>展开面板</span>
+                    </button>
+
+                    <!-- 控制侧边栏 -->
+                    <div class="control-panel glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-wrap">
+                                <h2>声学指纹去重</h2>
+                                <p class="subtitle">Songloft 核心 AcoustID 算法 + 30s 时长容差精准聚类</p>
+                            </div>
+                            <button type="button" class="btn-sidebar-toggle" title="折叠控制栏">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    <path d="M12 3L6 9h12z"/>
+                                    <rect x="5" y="11.5" width="14" height="1.8" rx="0.9"/>
+                                    <rect x="5" y="15" width="14" height="1.8" rx="0.9"/>
+                                    <rect x="5" y="18.5" width="14" height="1.8" rx="0.9"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="config-form">
+                            <div class="form-group">
+                                <div class="form-label-row">
+                                    <label for="dedup-music-dir">待扫描音乐目录</label>
+                                    <span class="label-badge-tip">支持多目录与单目录</span>
+                                </div>
+                                <select id="dedup-dir-select" class="select-input dir-quick-select" title="快速选择已挂载的音乐库">
+                                    <option value="__ALL__">🌐 全部音乐库 (合并扫描)</option>
+                                    <option value="__CUSTOM__">✏️ 自定义路径 / 手动输入...</option>
+                                </select>
+                                <div class="input-with-action" style="margin-top: 6px;">
+                                    <input type="text" id="dedup-music-dir" class="input-text" placeholder="例如：/music 或 /vol1/1000/music">
+                                    <button type="button" class="btn-input-refresh" id="btn-refresh-dedup-dir" title="重新查询该目录音乐数量">🔄</button>
+                                </div>
+                                <div class="dir-stats-badge" id="dedup-dir-stats">
+                                    <span class="stats-loading">🔍 正在查询目录音频文件...</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="dedup-tolerance">时长聚类容差 (秒): <span id="dedup-tolerance-val">30s</span></label>
+                                <input type="range" id="dedup-tolerance" min="0" max="60" value="30" step="1" class="slider-input">
+                                <span class="input-hint">同指纹内全片时长相差在该阈值内聚为同首，建议 30 秒。</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="dedup-workers">指纹计算并发数: <span id="dedup-workers-val">4</span></label>
+                                <input type="range" id="dedup-workers" min="1" max="8" value="4" class="slider-input">
+                            </div>
+
+                            <div class="btn-group-vertical">
+                                <button type="button" id="btn-dedup-missing" class="btn btn-primary btn-glow">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                    <span>计算缺失指纹 (推荐)</span>
+                                </button>
+                                <div class="btn-row">
+                                    <button type="button" id="btn-dedup-recompute" class="btn btn-secondary btn-sm" title="清空全部缓存指纹后全量重算">
+                                        <span>🔄 全量重新计算</span>
+                                    </button>
+                                    <button type="button" id="btn-dedup-retry" class="btn btn-secondary btn-sm" title="仅重试之前计算失败的音频">
+                                        <span>⚡ 重试失败项</span>
+                                    </button>
+                                </div>
+                                <button type="button" id="btn-dedup-cancel" class="btn btn-danger btn-sm hidden">
+                                    <span>🛑 中止指纹计算</span>
+                                </button>
+                            </div>
+
+                            <div class="divider"></div>
+
+                            <div class="smart-clean-box" style="background: rgba(124, 58, 237, 0.06); border-color: rgba(124, 58, 237, 0.2);">
+                                <h3 style="color: var(--accent-primary);">💡 声学指纹与去重机制</h3>
+                                <p>基于 AcoustID 算法比对实际声学波形特征，不受标签或格式差异影响。系统已为您自动分析并标记出 ⭐ 最佳音质版本，您可在右侧顶部使用“一键回收冗余”或按勾选批量清理。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 重复组展示区 -->
+                    <div class="display-panel">
+                        <!-- 统计概览卡片 -->
+                        <div class="stats-grid">
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-dup">👥</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">重复歌曲组数</span>
+                                    <span class="stat-value" id="stat-dedup-groups">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-count">📑</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">涉及重复音频总数</span>
+                                    <span class="stat-value" id="stat-dedup-songs">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel highlight-accent">
+                                <div class="stat-icon icon-save">💾</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">预计可释放空间</span>
+                                    <span class="stat-value" id="stat-dedup-wasted">0 MB</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 指纹进度指示条 -->
+                        <div id="dedup-progress-container" class="progress-panel glass-panel hidden">
+                            <div class="progress-header">
+                                <span class="progress-title" id="dedup-progress-text">正在计算音频指纹...</span>
+                                <span class="progress-percent" id="dedup-progress-percent">0%</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="dedup-progress-bar"></div>
+                            </div>
+                            <div class="progress-sub" id="dedup-current-file">正在提取指纹...</div>
+                        </div>
+
+                        <!-- 重复组卡片列表容器 -->
+                        <div class="duplicate-groups-panel">
+                            <div class="groups-toolbar glass-panel">
+                                <div class="toolbar-left">
+                                    <span class="section-title">重复音频分组</span>
+                                    <span class="badge" id="badge-groups-count">0 组</span>
+                                    <div class="selection-tools">
+                                        <button type="button" class="btn btn-secondary btn-sm" id="btn-dedup-select-redundant" title="选中所有标记为冗余/非推荐的音频">
+                                            ☑️ 选中冗余项
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="btn-dedup-select-none" title="取消所有勾选">
+                                            清空勾选
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="toolbar-right">
+                                    <div class="btn-group-actions">
+                                        <button type="button" id="btn-clean-recycle" class="btn btn-warning btn-sm" title="一键将所有组中判定为冗余的多余版本移入回收站">
+                                            ♻️ 一键回收冗余
+                                        </button>
+                                        <button type="button" id="btn-dedup-batch-recycle-selected" class="btn btn-secondary btn-sm" title="仅清理当前勾选的音频到回收站">
+                                            ♻️ 回收勾选项
+                                        </button>
+                                        <button type="button" id="btn-clean-delete" class="btn btn-danger-outline btn-sm" title="一键彻底永久删除所有冗余音频文件">
+                                            🗑️ 彻底删除冗余
+                                        </button>
+                                        <button id="btn-refresh-groups" class="btn btn-secondary btn-sm" title="刷新重复列表">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                                            刷新
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="duplicate-groups-list" class="duplicate-groups-list">
+                                <div class="empty-state glass-panel">
+                                    <div class="empty-icon">✨</div>
+                                    <h3>暂未发现重复音频</h3>
+                                    <p>点击左侧“计算缺失指纹”即可自动扫描曲库并聚类重复音乐</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: 真假无损鉴别 (FLAC/APE 频谱分析) -->
+            <section id="tab-lossless" class="tab-content">
+                <div class="grid-layout">
+                    <!-- 折叠后展开按钮 -->
+                    <button type="button" class="sidebar-expand-trigger" title="展开控制栏">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                            <path d="M12 21L18 15H6z"/>
+                            <rect x="5" y="10.7" width="14" height="1.8" rx="0.9"/>
+                            <rect x="5" y="7.2" width="14" height="1.8" rx="0.9"/>
+                            <rect x="5" y="3.7" width="14" height="1.8" rx="0.9"/>
+                        </svg>
+                        <span>展开面板</span>
+                    </button>
+
+                    <!-- 控制侧边栏 -->
+                    <div class="control-panel glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-wrap">
+                                <h2>真假无损鉴别</h2>
+                                <p class="subtitle">基于高频截止频率 (16k/20k 刀切线) 与泛音能量分析判定真假无损</p>
+                            </div>
+                            <button type="button" class="btn-sidebar-toggle" title="折叠控制栏">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    <path d="M12 3L6 9h12z"/>
+                                    <rect x="5" y="11.5" width="14" height="1.8" rx="0.9"/>
+                                    <rect x="5" y="15" width="14" height="1.8" rx="0.9"/>
+                                    <rect x="5" y="18.5" width="14" height="1.8" rx="0.9"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form id="form-lossless-scan" class="config-form">
+                            <div class="form-group">
+                                 <div class="form-label-row">
+                                     <label for="lossless-music-dir">待检测目录</label>
+                                     <span class="label-badge-tip">支持多目录与单目录</span>
+                                 </div>
+                                 <select id="lossless-dir-select" class="select-input dir-quick-select" title="快速选择已挂载的音乐库">
+                                     <option value="__ALL__">🌐 全部音乐库 (合并扫描)</option>
+                                     <option value="__CUSTOM__">✏️ 自定义路径 / 手动输入...</option>
+                                 </select>
+                                 <div class="input-with-action" style="margin-top: 6px;">
+                                     <input type="text" id="lossless-music-dir" class="input-text" placeholder="例如：/music 或 /vol1/1000/music">
+                                     <button type="button" class="btn-input-refresh" id="btn-refresh-lossless-dir" title="重新查询该目录音乐数量">🔄</button>
+                                 </div>
+                                 <div class="dir-stats-badge" id="lossless-dir-stats">
+                                     <span class="stats-loading">🔍 正在查询目录音频文件...</span>
+                                 </div>
+                                 <span class="input-hint">将自动筛选目录中所有的 .flac, .ape, .wav, .alac 格式</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="lossless-workers">并发检测线程: <span id="lossless-workers-val">4</span></label>
+                                <input type="range" id="lossless-workers" min="1" max="8" value="4" class="slider-input">
+                            </div>
+
+                            <button type="submit" id="btn-start-lossless" class="btn btn-primary btn-glow">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                <span>开始鉴别无损真伪</span>
+                            </button>
+                        </form>
+
+                        <div class="divider"></div>
+
+                        <div class="smart-clean-box">
+                            <h3>🔍 鉴别标准说明</h3>
+                            <ul style="font-size: 11px; color: var(--text-muted); padding-left: 16px; line-height: 1.6;">
+                                <li><strong>🏆 真 Hi-Res</strong>：高频自然延伸超越 24kHz~48kHz。</li>
+                                <li><strong>💎 真 CD 无损</strong>：20kHz~22.05kHz 高频泛音丰富连贯。</li>
+                                <li><strong>⚠️ 假无损 (320k)</strong>：在 20kHz 处有明显刀切截断线。</li>
+                                <li><strong>🚫 劣质假无损 (128k)</strong>：16kHz 以上几乎无有效高频。</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 结果展示区 -->
+                    <div class="display-panel">
+                        <!-- 统计概览卡片 -->
+                        <div class="stats-grid">
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-total">🎼</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">无损音频总数</span>
+                                    <span class="stat-value" id="stat-lossless-total">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-ok">💎</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">确认真无损</span>
+                                    <span class="stat-value" id="stat-lossless-true" style="color: var(--color-success);">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel highlight-warn">
+                                <div class="stat-icon icon-warn">⚠️</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">假无损 (320k 转压)</span>
+                                    <span class="stat-value" id="stat-lossless-fake">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel highlight-danger">
+                                <div class="stat-icon icon-error">🚫</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">劣质假无损 (128k)</span>
+                                    <span class="stat-value" id="stat-lossless-bad">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 进度指示条 -->
+                        <div id="lossless-progress-container" class="progress-panel glass-panel hidden">
+                            <div class="progress-header">
+                                <span class="progress-title" id="lossless-progress-text">正在分析音频频谱与频响截断...</span>
+                                <span class="progress-percent" id="lossless-progress-percent">0%</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="lossless-progress-bar"></div>
+                            </div>
+                            <div class="progress-sub" id="lossless-current-file">准备中...</div>
+                        </div>
+
+                        <!-- 结果列表 -->
+                        <div class="table-panel glass-panel">
+                            <div class="table-header">
+                                <div>
+                                    <h3>无损真伪分析列表</h3>
+                                    <span class="table-subtitle" id="lossless-record-count">共检测 0 首音频</span>
+                                </div>
+                                <div class="table-actions">
+                                    <select id="lossless-filter-select" class="select-input" style="width: 140px; padding: 6px 10px;">
+                                        <option value="all" selected>全部音频</option>
+                                        <option value="fake_only">⚠️ 仅看假无损</option>
+                                        <option value="true_only">💎 仅看真无损</option>
+                                    </select>
+                                    <input type="text" id="lossless-filter-query" class="input-search" placeholder="搜索文件名...">
+                                    <button id="btn-export-lossless-csv" class="btn btn-secondary btn-sm">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                        导出报告
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="table-container">
+                                <table class="data-table" id="table-lossless-records">
+                                    <thead>
+                                        <tr>
+                                            <th>音频文件</th>
+                                            <th>格式与规格</th>
+                                            <th>无损真实度判定</th>
+                                            <th>截断频率 (Cutoff)</th>
+                                            <th>置信度</th>
+                                            <th>频谱分析特征</th>
+                                            <th width="120">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lossless-records-body">
+                                        <tr>
+                                            <td colspan="7" class="empty-state">
+                                                <div class="empty-icon">🎼</div>
+                                                <p>点击左侧“开始鉴别无损真伪”扫描曲库中的 FLAC / APE 文件</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: 歌单文本提取器 (网易云/QQ/汽水音乐) -->
+            <section id="tab-playlist" class="tab-content">
+                <div class="grid-layout">
+                    <!-- 折叠后展开按钮 -->
+                    <button type="button" class="sidebar-expand-trigger" title="展开控制栏">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                            <path d="M12 21L18 15H6z"/>
+                            <rect x="5" y="10.7" width="14" height="1.8" rx="0.9"/>
+                            <rect x="5" y="7.2" width="14" height="1.8" rx="0.9"/>
+                            <rect x="5" y="3.7" width="14" height="1.8" rx="0.9"/>
+                        </svg>
+                        <span>展开面板</span>
+                    </button>
+
+                    <!-- 控制侧边栏 -->
+                    <div class="control-panel glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-wrap">
+                                <h2>歌单文本提取</h2>
+                                <p class="subtitle">支持网易云音乐、QQ音乐、汽水音乐一键解析并生成标准歌单文本</p>
+                            </div>
+                            <button type="button" class="btn-sidebar-toggle" title="折叠控制栏">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    <path d="M12 3L6 9h12z"/>
+                                    <rect x="5" y="11.5" width="14" height="1.8" rx="0.9"/>
+                                    <rect x="5" y="15" width="14" height="1.8" rx="0.9"/>
+                                    <rect x="5" y="18.5" width="14" height="1.8" rx="0.9"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form id="form-playlist-parse" class="config-form">
+                            <div class="form-group">
+                                <label for="playlist-url">歌单分享链接或文案</label>
+                                <textarea id="playlist-url" class="input-text" rows="3" placeholder="例如：https://music.163.com/#/playlist?id=xxx 或从手机 App 复制的整段分享文本" required></textarea>
+                                <span class="input-hint">自动从分享文本中智能识别出网易云、QQ音乐或汽水音乐歌单链接</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="playlist-format">输出歌曲格式</label>
+                                <select id="playlist-format" class="select-input">
+                                    <option value="song-singer" selected>歌名 - 歌手 (默认推荐，兼容性最佳)</option>
+                                    <option value="singer-song">歌手 - 歌名</option>
+                                    <option value="song">仅歌名</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="playlist-detailed">
+                                    <span>详细歌曲名 (保留 Live/Remix/括号等后缀)</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="playlist-reverse">
+                                    <span>倒序排列歌单</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="playlist-save-history" checked>
+                                    <span>保存到本地历史记录</span>
+                                </label>
+                            </div>
+
+                            <button type="submit" id="btn-start-playlist" class="btn btn-primary btn-glow">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                <span>🚀 开始提取歌单</span>
+                            </button>
+                        </form>
+
+                        <div class="divider"></div>
+
+                        <!-- 迁移指南说明 -->
+                        <div class="smart-clean-box" style="background: rgba(59, 130, 246, 0.06); border-color: rgba(59, 130, 246, 0.2);">
+                            <h3 style="color: #3b82f6;">💡 跨平台歌单迁移指南</h3>
+                            <p style="margin-bottom: 8px;">一键将国内音乐歌单迁移至 Apple Music / Spotify / YouTube Music：</p>
+                            <ol style="font-size: 11px; color: var(--text-muted); padding-left: 18px; line-height: 1.8;">
+                                <li>提取成功后点击右侧「📋 复制纯文本」</li>
+                                <li>打开 <a href="https://www.tunemymusic.com/zh-CN/transfer" target="_blank" style="color: #3b82f6; text-decoration: underline;">TuneMyMusic</a> 或 <a href="https://spotlistr.com/" target="_blank" style="color: #3b82f6; text-decoration: underline;">Spotlistr</a></li>
+                                <li>选择歌单来源为<strong>“任意文本 (Any text / Free text)”</strong>，粘贴进去</li>
+                                <li>选择目标平台确认迁移即可！</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- 提取结果展示区 -->
+                    <div class="display-panel">
+                        <!-- 统计概览卡片 -->
+                        <div class="stats-grid">
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-total">🏷️</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">来源音乐平台</span>
+                                    <span class="stat-value" id="stat-pl-platform">-</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-count">🎵</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">解析歌曲总数</span>
+                                    <span class="stat-value" id="stat-pl-count">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-ok">⚡</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">解析耗时</span>
+                                    <span class="stat-value" id="stat-pl-time">0.00s</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel highlight-accent">
+                                <div class="stat-icon icon-dup">📚</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">已存历史记录</span>
+                                    <span class="stat-value" id="stat-pl-history-count">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 进度加载动画条 -->
+                        <div id="playlist-progress-container" class="progress-panel glass-panel hidden">
+                            <div class="progress-header">
+                                <span class="progress-title" id="pl-progress-text">正在连接平台 API 解析歌单数据...</span>
+                                <span class="progress-percent" id="pl-progress-percent">解析中...</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" style="width: 100%; animation: pulse-glow 1.5s infinite;"></div>
+                            </div>
+                        </div>
+
+                        <!-- 歌曲列表卡片 -->
+                        <div class="table-panel glass-panel">
+                            <div class="table-header">
+                                <div>
+                                    <h3 id="playlist-result-title">解析歌曲列表</h3>
+                                    <span class="table-subtitle" id="playlist-result-subtitle">请输入链接提取歌单或从下方历史载入</span>
+                                </div>
+                                <div class="table-actions">
+                                    <input type="text" id="pl-filter-query" class="input-search" placeholder="搜索歌曲名或歌手...">
+                                    <div class="btn-group-actions">
+                                        <button id="btn-pl-copy-all" class="btn btn-primary btn-sm" title="一键复制纯文本歌曲列表，方便直接粘贴迁移">
+                                            📋 复制纯文本
+                                        </button>
+                                        <button id="btn-pl-import-feiniu" class="btn btn-success btn-sm" title="将提取结果一键导入并匹配到飞牛 NAS 歌单">
+                                            🐂 导入到飞牛歌单
+                                        </button>
+                                        <button id="btn-pl-export-txt" class="btn btn-secondary btn-sm" title="导出为 .txt 文件">
+                                            💾 导出 TXT
+                                        </button>
+                                        <button id="btn-pl-export-csv" class="btn btn-secondary btn-sm" title="导出为 .csv 文件">
+                                            📑 导出 CSV
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-container" style="max-height: 420px; overflow-y: auto;">
+                                <table class="data-table" id="table-playlist-songs">
+                                    <thead>
+                                        <tr>
+                                            <th width="60">序号</th>
+                                            <th>歌曲名称</th>
+                                            <th>歌手 / 艺术家</th>
+                                            <th>标准显示文本</th>
+                                            <th width="100">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pl-songs-body">
+                                        <tr>
+                                            <td colspan="5" class="empty-state">
+                                                <div class="empty-icon">🎵</div>
+                                                <p>在左侧粘贴网易云 / QQ音乐 / 汽水音乐歌单链接后点击“开始提取”</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 历史提取记录面板 -->
+                        <div class="table-panel glass-panel" style="margin-top: 16px;">
+                            <div class="table-header">
+                                <div>
+                                    <h3>📑 本地历史提取记录</h3>
+                                    <span class="table-subtitle">记录此前已解析过的歌单，可随时重新展开查看或复制</span>
+                                </div>
+                                <div class="table-actions">
+                                    <button id="btn-pl-refresh-history" class="btn btn-secondary btn-sm" title="刷新历史列表">
+                                        🔄 刷新
+                                    </button>
+                                    <button id="btn-pl-clear-history" class="btn btn-danger-outline btn-sm" title="清空全部历史记录">
+                                        🗑️ 清空历史
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="table-container" style="max-height: 240px; overflow-y: auto;">
+                                <table class="data-table" id="table-playlist-history">
+                                    <thead>
+                                        <tr>
+                                            <th width="90">平台</th>
+                                            <th>歌单标题</th>
+                                            <th width="100">歌曲数</th>
+                                            <th width="160">提取时间</th>
+                                            <th width="140">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pl-history-body">
+                                        <tr>
+                                            <td colspan="5" class="empty-state">
+                                                <p>暂无历史提取记录</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: 飞牛音乐歌单管理器 (FnOS Music) -->
+            <section id="tab-feiniu" class="tab-content">
+                <div class="grid-layout">
+                    <!-- 折叠后展开按钮 -->
+                    <button type="button" class="sidebar-expand-trigger" title="展开控制栏">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                            <path d="M12 21L18 15H6z"/>
+                            <rect x="5" y="10.7" width="14" height="1.8" rx="0.9"/>
+                            <rect x="5" y="7.2" width="14" height="1.8" rx="0.9"/>
+                            <rect x="5" y="3.7" width="14" height="1.8" rx="0.9"/>
+                        </svg>
+                        <span>展开面板</span>
+                    </button>
+
+                    <!-- 控制侧边栏 -->
+                    <div class="control-panel glass-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-wrap">
+                                <h2>飞牛音乐管理</h2>
+                                <p class="subtitle">直连飞牛 FnOS 原生音乐服务，管理 NAS 歌单与自动匹配入库</p>
+                            </div>
+                            <button type="button" class="btn-sidebar-toggle" title="折叠控制栏">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    <path d="M12 3L6 9h12z"/>
+                                    <rect x="5" y="11.5" width="14" height="1.8" rx="0.9"/>
+                                    <rect x="5" y="15" width="14" height="1.8" rx="0.9"/>
+                                    <rect x="5" y="18.5" width="14" height="1.8" rx="0.9"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- 飞牛 NAS 连接配置 -->
+                        <div class="feiniu-auth-box">
+                            <div class="box-header">
+                                <span class="box-title">🔐 飞牛 NAS 连接凭据</span>
+                                <span class="status-indicator-badge" id="fn-auth-status-badge">未连接</span>
+                            </div>
+
+                            <form id="form-feiniu-connect" class="config-form" style="margin-top: 10px;">
+                                <div class="form-group">
+                                    <label for="fn-server-url">飞牛 NAS 服务地址</label>
+                                    <input type="text" id="fn-server-url" class="input-text" value="http://172.17.0.1:5666" placeholder="例如：http://172.17.0.1:5666" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="fn-username">飞牛用户名</label>
+                                    <input type="text" id="fn-username" class="input-text" placeholder="例如：admin" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="fn-password">登录密码</label>
+                                    <input type="password" id="fn-password" class="input-text" placeholder="飞牛系统登录密码" required>
+                                    <span class="input-hint">密码仅在本地生成 SHA-256 哈希传输并持久化，支持 401 自动无感重连</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="fn-access-code">安全码 (可选)</label>
+                                    <input type="password" id="fn-access-code" class="input-text" placeholder="若 NAS 开启了安全码保护请输入">
+                                </div>
+
+                                <div class="btn-group-row">
+                                    <button type="submit" id="btn-fn-connect" class="btn btn-primary" style="flex: 1;">
+                                        ⚡ 连接 / 重新登录
+                                    </button>
+                                    <button type="button" id="btn-fn-disconnect" class="btn btn-secondary" title="断开连接并清除凭据">
+                                        断开
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="divider"></div>
+
+                        <!-- 快速新建歌单 -->
+                        <form id="form-fn-create-playlist" class="config-form">
+                            <div class="form-group">
+                                <label for="fn-new-pl-name">➕ 新建飞牛歌单</label>
+                                <div class="input-with-action">
+                                    <input type="text" id="fn-new-pl-name" class="input-text" placeholder="输入新歌单名称..." required>
+                                    <button type="submit" class="btn btn-primary" id="btn-fn-create-pl">创建</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="divider"></div>
+
+                        <!-- 飞牛联动使用说明 -->
+                        <div class="smart-clean-box" style="background: rgba(16, 185, 129, 0.06); border-color: rgba(16, 185, 129, 0.25);">
+                            <h3 style="color: #10b981;">💡 飞牛音乐歌单功能提示</h3>
+                            <ul style="font-size: 11px; color: var(--text-muted); padding-left: 16px; line-height: 1.8; margin-top: 6px;">
+                                <li><strong>外部歌单一键导入</strong>：在「歌单文本提取」解析后直接点击「🐂 导入到飞牛歌单」。</li>
+                                <li><strong>智能曲库搜索匹配</strong>：系统自动按歌名与歌手在飞牛本地库中精准检索并写入。</li>
+                                <li><strong>一键清理失效歌曲</strong>：删除已失效或物理路径变更的歌曲。</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 右侧歌单展示与歌曲管理区 -->
+                    <div class="display-panel">
+                        <!-- 统计概览卡片 -->
+                        <div class="stats-grid">
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-total">🐂</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">连接账号</span>
+                                    <span class="stat-value" id="stat-fn-user">-</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-count">📑</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">飞牛歌单总数</span>
+                                    <span class="stat-value" id="stat-fn-playlist-count">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon icon-ok">🎵</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">歌单累计曲目</span>
+                                    <span class="stat-value" id="stat-fn-track-count">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel highlight-accent">
+                                <div class="stat-icon icon-dup">✨</div>
+                                <div class="stat-info">
+                                    <span class="stat-label">会话保活状态</span>
+                                    <span class="stat-value" id="stat-fn-session-status">就绪</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 歌单卡片网格面板 -->
+                        <div class="table-panel glass-panel" id="fn-playlist-panel">
+                            <div class="table-header">
+                                <div>
+                                    <h3>飞牛歌单列表</h3>
+                                    <span class="table-subtitle">点击任意歌单卡片查看其收录歌曲明细</span>
+                                </div>
+                                <div class="table-actions">
+                                    <input type="text" id="fn-filter-query" class="input-search" placeholder="筛选歌单名称...">
+                                    <button id="btn-fn-refresh-playlists" class="btn btn-secondary btn-sm" title="重新从飞牛 NAS 拉取歌单">
+                                        🔄 刷新歌单
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 歌单卡片网格容器 -->
+                            <div id="fn-playlist-grid" class="playlist-cards-grid">
+                                <div class="empty-state" style="grid-column: 1 / -1;">
+                                    <p>未连接飞牛 NAS 或暂无歌单，请先在左侧输入凭据连接</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 选中歌单曲目明细抽屉面板 -->
+                        <div class="table-panel glass-panel hidden" id="fn-track-detail-panel">
+                            <div class="table-header">
+                                <div>
+                                    <h3 id="fn-detail-playlist-name">歌单曲目明细</h3>
+                                    <span class="table-subtitle" id="fn-detail-playlist-sub">共 0 首歌曲</span>
+                                </div>
+                                <div class="table-actions">
+                                    <button id="btn-fn-close-tracks" class="btn btn-secondary btn-sm">⬅️ 返回歌单列表</button>
+                                    <button id="btn-fn-purge-invalid" class="btn btn-secondary btn-sm" title="清理失效或找不到物理文件的歌曲">
+                                        🧹 清理失效歌曲
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="table-container" style="max-height: 480px; overflow-y: auto;">
+                                <table class="data-table" id="table-fn-tracks">
+                                    <thead>
+                                        <tr>
+                                            <th width="60">序号</th>
+                                            <th>歌曲名称</th>
+                                            <th>歌手</th>
+                                            <th>专辑</th>
+                                            <th>格式/规格</th>
+                                            <th>时长</th>
+                                            <th width="120">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fn-tracks-body">
+                                        <tr>
+                                            <td colspan="7" class="empty-state">
+                                                <p>正在加载歌曲列表...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 全局音频试听条 -->
+        <div id="audio-player-bar" class="audio-player-bar glass-panel hidden">
+            <div class="player-info">
+                <div class="player-icon">🎵</div>
+                <div class="player-meta">
+                    <span class="player-title" id="player-track-name">未选择音频</span>
+                    <span class="player-path" id="player-track-path"></span>
+                </div>
+            </div>
+            <audio id="global-audio-element" controls preload="none"></audio>
+            <button id="btn-close-player" class="btn-icon" title="关闭播放器">✕</button>
+        </div>
+    </div>
+
+    <!-- 通用操作模态框 (Modal) -->
+    <div id="action-modal" class="modal-overlay hidden">
+        <div class="modal-card glass-panel">
+            <div class="modal-header">
+                <h3 id="modal-title">复制文件配置</h3>
+                <button id="btn-modal-close" class="btn-icon" title="关闭">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc" id="modal-desc">即将处理 1 个文件</p>
+                <div class="form-group" id="modal-group-output-dir">
+                    <label for="modal-output-dir">目标输出目录</label>
+                    <input type="text" id="modal-output-dir" class="input-text" placeholder="/output">
+                </div>
+                <div class="form-row" id="modal-group-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="modal-keep-structure" checked>
+                        <span>保留相对文件夹层级结构</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="modal-fix-ext" checked>
+                        <span>导出时自动修正为真实后缀</span>
+                    </label>
+                </div>
+                <div id="modal-delete-options" class="form-group hidden">
+                    <label class="radio-label">
+                        <input type="radio" name="modal-delete-type" value="recycle" checked>
+                        <span>♻️ 移入安全回收站 (推荐，保留在 output/_recycle_bin)</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="modal-delete-type" value="delete">
+                        <span style="color: var(--color-danger); font-weight: 600;">🗑️ 彻底删除 (不可恢复)</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-modal-cancel" class="btn btn-secondary btn-sm">取消</button>
+                <button id="btn-modal-confirm" class="btn btn-primary btn-sm">确认执行</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 飞牛歌单一键导入模态框 (Modal) -->
+    <div id="fn-import-modal" class="modal-overlay hidden">
+        <div class="modal-card glass-panel" style="max-width: 640px;">
+            <div class="modal-header">
+                <h3 id="fn-import-modal-title">🐂 导入歌单到飞牛 NAS</h3>
+                <button id="btn-fn-import-modal-close" class="btn-icon" title="关闭">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="fn-import-form-area">
+                    <p class="modal-desc" id="fn-import-modal-desc">即将匹配并导入 0 首歌曲至飞牛本地音乐库</p>
+
+                    <div class="form-group">
+                        <label>导入模式</label>
+                        <div class="form-row">
+                            <label class="radio-label">
+                                <input type="radio" name="fn-import-mode" value="new" checked>
+                                <span>新建飞牛歌单</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="fn-import-mode" value="existing">
+                                <span>追加至现有歌单</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="fn-import-group-new-name">
+                        <label for="fn-import-new-name">新歌单名称</label>
+                        <input type="text" id="fn-import-new-name" class="input-text" placeholder="输入歌单名称">
+                    </div>
+
+                    <div class="form-group hidden" id="fn-import-group-existing-pl">
+                        <label for="fn-import-select-pl">选择现有飞牛歌单</label>
+                        <select id="fn-import-select-pl" class="select-input">
+                            <option value="">加载中...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 导入执行中的进度条 -->
+                <div id="fn-import-running-area" class="hidden" style="margin: 15px 0;">
+                    <div class="progress-header">
+                        <span class="progress-title" id="fn-import-progress-status">🔍 正在检索飞牛本地曲库并匹配歌曲...</span>
+                        <span class="progress-percent" id="fn-import-progress-pct">匹配中...</span>
+                    </div>
+                    <div class="progress-bar-bg" style="margin-top: 8px;">
+                        <div class="progress-bar-fill" style="width: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- 导入完成结果报告区 -->
+                <div id="fn-import-result-area" class="hidden" style="margin-top: 15px;">
+                    <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 12px;">
+                        <div class="stat-card" style="padding: 10px;">
+                            <span class="stat-label">提取总数</span>
+                            <span class="stat-value" id="fn-rep-total" style="font-size: 18px;">0</span>
+                        </div>
+                        <div class="stat-card" style="padding: 10px;">
+                            <span class="stat-label" style="color: var(--color-success);">匹配入库</span>
+                            <span class="stat-value" id="fn-rep-matched" style="font-size: 18px; color: var(--color-success);">0</span>
+                        </div>
+                        <div class="stat-card" style="padding: 10px;">
+                            <span class="stat-label" style="color: var(--color-danger);">未找到</span>
+                            <span class="stat-value" id="fn-rep-unmatched" style="font-size: 18px; color: var(--color-danger);">0</span>
+                        </div>
+                    </div>
+
+                    <div id="fn-unmatched-box" class="hidden">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-size: 12px; font-weight: 600; color: var(--color-danger);">⚠️ 以下歌曲在 NAS 本地曲库中暂未收录：</span>
+                            <button id="btn-copy-unmatched" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 8px;">📋 复制缺失清单</button>
+                        </div>
+                        <textarea id="fn-unmatched-textarea" class="input-text" rows="4" readonly style="font-size: 11px; font-family: var(--font-mono);"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-fn-import-cancel" class="btn btn-secondary btn-sm">取消</button>
+                <button id="btn-fn-import-confirm" class="btn btn-primary btn-sm">🚀 开始匹配并导入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 歌单重命名模态框 (Modal) -->
+    <div id="fn-rename-modal" class="modal-overlay hidden">
+        <div class="modal-card glass-panel">
+            <div class="modal-header">
+                <h3>编辑飞牛歌单</h3>
+                <button id="btn-fn-rename-close" class="btn-icon" title="关闭">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="fn-rename-guid">
+                <div class="form-group">
+                    <label for="fn-rename-name">新歌单名称</label>
+                    <input type="text" id="fn-rename-name" class="input-text" placeholder="输入歌单名称" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-fn-rename-cancel" class="btn btn-secondary btn-sm">取消</button>
+                <button id="btn-fn-rename-confirm" class="btn btn-primary btn-sm">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗与 Toast 容器 -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
+
