@@ -273,4 +273,3 @@ func TestImporterMatchingRealWorld(t *testing.T) {
 		t.Fatalf("unexpected matched guid: %s", res.Results[0].TrackGUID)
 	}
 }
-

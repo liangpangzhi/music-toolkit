@@ -422,5 +422,3 @@ func TestDualAuthAndSystemUnlock(t *testing.T) {
 		t.Fatalf("expected 401 Unauthorized after logout, got %d", recAfterLogout.Code)
 	}
 }
-
-

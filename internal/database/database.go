@@ -742,6 +742,3 @@ func (d *DB) VerifyUserPassword(ctx context.Context, username, password string) 
 
 	return u, nil
 }
-
-
-

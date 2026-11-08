@@ -19,15 +19,15 @@ type SongItem struct {
 
 // ParseResult 歌单解析结果
 type ParseResult struct {
-	Platform   string     `json:"platform"` // netease, qq, qishui
-	SourceURL  string     `json:"source_url"`
-	Title      string     `json:"title"`
-	SongCount  int        `json:"song_count"`
-	Songs      []SongItem `json:"songs"`
-	TextList   []string   `json:"text_list"` // 纯文本列表（便于直接复制）
-	RawText    string     `json:"raw_text"`  // 换行分隔的纯文本
-	HistoryID  int64      `json:"history_id,omitempty"`
-	ParseTime  float64    `json:"parse_time"` // 解析耗时（秒）
+	Platform  string     `json:"platform"` // netease, qq, qishui
+	SourceURL string     `json:"source_url"`
+	Title     string     `json:"title"`
+	SongCount int        `json:"song_count"`
+	Songs     []SongItem `json:"songs"`
+	TextList  []string   `json:"text_list"` // 纯文本列表（便于直接复制）
+	RawText   string     `json:"raw_text"`  // 换行分隔的纯文本
+	HistoryID int64      `json:"history_id,omitempty"`
+	ParseTime float64    `json:"parse_time"` // 解析耗时（秒）
 }
 
 // HistoryItem 历史记录条目

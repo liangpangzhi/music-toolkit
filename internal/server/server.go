@@ -558,7 +558,7 @@ func (s *Server) handleDirStats(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSystemStatus(w http.ResponseWriter, r *http.Request) {
 	_, ffmpegErr := exec.LookPath(s.cfg.FFmpegPath)
 	chromaOk := deduplicator.IsChromaprintAvailable(s.cfg.FFmpegPath)
-	
+
 	// 分别统计每个已发现的目录（走缓存，避免前端轮询时反复全盘遍历）
 	var dirStatsList []DirStats
 	for _, d := range s.cfg.MusicDirs {
@@ -885,8 +885,8 @@ type FormatBatchActionReq struct {
 	FilePaths     []string `json:"file_paths"`
 	Action        string   `json:"action"` // rename_fix, copy, move, recycle, delete
 	OutputDir     string   `json:"output_dir,omitempty"`
-	KeepStructure bool   `json:"keep_structure"`
-	FixExtension  bool   `json:"fix_extension"`
+	KeepStructure bool     `json:"keep_structure"`
+	FixExtension  bool     `json:"fix_extension"`
 }
 
 func (s *Server) handleFormatActionBatch(w http.ResponseWriter, r *http.Request) {
@@ -2191,6 +2191,3 @@ func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 	})
 }
-
-
-
